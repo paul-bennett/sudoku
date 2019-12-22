@@ -1,0 +1,14 @@
+cabal-version: 2.4
+name: Sodoku
+version: 1.0
+stability: experimental
+x-ghc-framework-version: 8.6.4-13.14-2
+x-last-ide-version: HfM1.7.0
+
+executable Sodoku
+    main-is: Main.hs
+    default-language: Haskell2010
+    build-depends:
+        split -any,
+        base -any,
+        array -any

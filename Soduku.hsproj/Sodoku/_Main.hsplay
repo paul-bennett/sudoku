@@ -1,0 +1,174 @@
+-- Haskell Playground 1.0
+import Data.Maybe
+
+sampleGrid =
+  "53_ _7_ ___" ++
+  "6__ 195 ___" ++
+  "_98 ___ _6_" ++
+           
+  "8__ _6_ __3" ++
+  "4__ 8_3 __1" ++
+  "7__ _2_ __6" ++
+           
+  "_6_ ___ 28_" ++
+  "___ 419 __5" ++
+  "___ _8_ _79"
+
+-- A duff grid: not a ^4
+mkSudoku "291283"
+
+-- The most trivial grid
+trivial = fromJust $ mkSudoku "1"
+
+isSolved trivial
+
+maybeGrid = mkSudoku sampleGrid
+grid = fromJust maybeGrid
+grid
+
+
+
+
+
+
+
+
+
+isCompleted grid
+isSolved grid
+
+soln = solve grid
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+
+length$ groups grid
+
+reduceGroup' ["123", "1", "234", "2"]
+reduceGroup ["123", "1", "234", "2"]
+
+reduceGroup ["8", "123456789", "123456789", "123456789", "6", "123456789", "123456789", "123456789", "3"]
+
+reduceGroup ["56", "56", "5678", "8"]
+
+let g = ["12345", "1234", "124", "124"]
+length (filter ('6' `elem`) g)
+eliminateCandidates g
+setUniqueCandidates g
+reduceGroup g
+
+
+
+soln = solve $ fromJust $ mkSudoku ("12 3_" ++ "_3 __" ++ "__ 2_" ++ "__ __")
+isCompleted soln
+isSolved soln
+soln
+
+
+
+
+
+g' = solve grid
+isCompleted g'
+isSolved g'
+
+
+g4648hard = fromJust $ mkSudoku "___6__2_8_______4_____94_75_26_7_4____4_3_7____5_4_96_78_26_____4_______9_2__1___"
+soln = solve g4648hard
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+g4646m = fromJust $ mkSudoku "_9___7_1_5___6___32_15______52___3______1_____36___2__9_51_____7___8___4_2___4_5_"
+soln = solve g4646m
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+
+natEasy = fromJust $ mkSudoku "____27_______9_685___6__2__46___3_7_932___561_5_1___42__7__4___845_1_______73____"
+soln = solve natEasy
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+natMedium = fromJust $ mkSudoku "_9_____7______6__8__8___926_13_6____52_3_8_67____7_45_182___6__3__2______5_____8_"
+soln = solve natMedium
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+natHard = fromJust $ mkSudoku "____8__6______5__1___9__2____2__6___6____274__4_31___2__4_2__531___3_8___6___91__"
+soln = solve natHard
+isSolved soln
+soln
+
+
+
+
+
+
+
+
+
+
+med = fromJust $ mkSudoku "928___4__6__9_8___1____48_7_6__7_28____2_1____32_4__5_5_91____6___7_5__8__6___715"
+med
+
+
+
+
+
+
+
+
+
+
+solve med
+
+
+
+
+
+
+
+
+
+
+
