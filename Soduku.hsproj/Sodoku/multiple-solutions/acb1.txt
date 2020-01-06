@@ -1,0 +1,14 @@
+# A puzzle from ACB's book
+# Seems to have multiple solutions, with first cell 2, 4 or 8.
+
+_6_ ___ 27_
+___ 38_ _1_
+1_5 __7 ___
+
+6__ __8 _27
+__8 _7_ 5__
+31_ 5__ __4
+
+___ 7__ 9_1
+_7_ _69 ___
+_46 ___ _5_

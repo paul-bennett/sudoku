@@ -1,0 +1,18 @@
+# "Hard" puzzle from The National newspaper, 2020-01-06
+# Seems to have a single solution, but application presently
+# stops before finding it.
+
+# To force solution, change last cell of middle row to an 8:
+# ___   9_5   __8
+
+_7_   ___   5__
+__3   42_   __7
+__6   ___   __4
+
+38_   _1_   6__
+___   9_5   ___
+__4   _7_   _13
+
+6__   ___   7__
+9__   _86   4__
+__5   ___   _2_
