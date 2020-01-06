@@ -1,0 +1,34 @@
+-- Haskell Playground 1.0
+import Data.Maybe
+
+sampleGrid =
+  "53_ _7_ ___" ++
+  "6__ 195 ___" ++
+  "_98 ___ _6_" ++
+           
+  "8__ _6_ __3" ++
+  "4__ 8_3 __1" ++
+  "7__ _2_ __6" ++
+           
+  "_6_ ___ 28_" ++
+  "___ 419 __5" ++
+  "___ _8_ _79"
+
+grid = fromJust $ mkSudoku sampleGrid
+
+groupIndices grid
+
+length $ groupIndices grid
+
+reduceGroup' ["123", "1", "234", "2"]
+reduceGroup ["123", "1", "234", "2"]
+
+reduceGroup ["8", "123456789", "123456789", "123456789", "6", "123456789", "123456789", "123456789", "3"]
+
+reduceGroup ["56", "56", "5678", "8"]
+
+let g = ["12345", "1234", "124", "124"]
+length (filter ('6' `elem`) g)
+eliminateCandidates g
+setUniqueCandidates g
+reduceGroup g

@@ -34,6 +34,7 @@ grid
 
 
 
+
 isCompleted grid
 isSolved grid
 
@@ -47,23 +48,6 @@ soln
 
 
 
-
-
-
-length$ groups grid
-
-reduceGroup' ["123", "1", "234", "2"]
-reduceGroup ["123", "1", "234", "2"]
-
-reduceGroup ["8", "123456789", "123456789", "123456789", "6", "123456789", "123456789", "123456789", "3"]
-
-reduceGroup ["56", "56", "5678", "8"]
-
-let g = ["12345", "1234", "124", "124"]
-length (filter ('6' `elem`) g)
-eliminateCandidates g
-setUniqueCandidates g
-reduceGroup g
 
 
 
@@ -163,6 +147,27 @@ med
 solve med
 
 
+
+
+
+
+
+
+
+
+hardest = fromJust $ mkSudoku "8__________36______7__9_2___5___7_______457_____1___3___1____68__85___1__9____4__"
+hardest
+
+
+
+
+
+
+
+
+
+
+solve hardest
 
 
 
