@@ -1,4 +1,11 @@
-module Sudoku (Sudoku, mkSudoku, isCompleted, isSolved, solve) where
+module Sudoku 
+  ( Sudoku
+  , mkSudoku
+  , isCompleted
+  , isSolved
+  , solve
+  , showWorkings
+  ) where
   
 import Data.Array
 import Data.List
@@ -46,13 +53,49 @@ instance Show Sudoku where
                  g
 
 
+showWorkings s = concat [ gridRowStart
+                        , intercalate gridRowSep (map (showSubgridRow s) [1..rank])
+                        , gridRowEnd
+                        ]
+  where
+    rank = sudokuRank s
+    
+    showSubgridRow s gr = intercalate cellRowSep (map (showCellRow s gr) [1..rank])
+    showCellRow s gr cr = concat (map (showCandidateRow s gr cr) [1..rank])
+    showCandidateRow s gr cr sr = dataRow $ chunksOf rank shownCandidates
+      where
+        symbolsForRow = take rank $ drop ((sr-1)*rank) (sudokuSymbols s)
+        indexes = range ((gr,cr,1,1),(gr,cr,rank,rank))
+        candidates = (map (sudokuGrid s!) indexes)
+        shownCandidates = map foo candidates
+        foo c = map (\sym -> if sym `elem` c then sym else ' ') symbolsForRow
+
+    subgridSepData = chunksOf rank $ take (rank*rank)
+                          $ repeat $ take rank $ repeat '-'
+                          
+    gridRowStart  = prettyRow ",-" "-+-" "-.    ,-" "-.\n" subgridSepData
+    gridRowEnd    = prettyRow "`-" "-+-" "-'    `-" "-'\n" subgridSepData
+    cellRowSep    = prettyRow "+-" "-+-" "-+    +-" "-+\n" subgridSepData
+    dataRow d     = prettyRow "| " " | " " |    | " " |\n" d
+    
+    gridRowSep = concat [ gridRowEnd
+                        , "\n\n"
+                        , gridRowStart
+                        ]
+
+    prettyRow rowStart cellSep gridSep rowEnd d =
+      concat [ rowStart
+             , intercalate gridSep $ map (intercalate cellSep) d
+             , rowEnd
+             ]
+
 mkSudoku :: String -> Maybe Sudoku
 mkSudoku s = 
   if ( round(fromIntegral(rank) ** 4) == gridSize)
      && length specifiedSymbols <= subgridSize
   then Just Sudoku 
          { sudokuRank     = rank
-         , sudokuSymbols  = ourSymbols
+         , sudokuSymbols  = sort ourSymbols
          , sudokuIndexes  = indexes
          , sudokuGrid     = array dimensions $ zip indexes cells 
   }
@@ -91,10 +134,10 @@ isCompleted s = all (\c -> length c == 1) $ elems $ sudokuGrid s
 -- number of distinct 
 isSolved :: Sudoku -> Bool
 
-isSolved s = all (\g -> (sort symbols) == sort (foldr (++) "" g)) gs
+isSolved s = all (\g -> sortedSymbols == (sort . concat) g) gs
   where
     grid = sudokuGrid s
-    symbols = sudokuSymbols s
+    sortedSymbols = sort $ sudokuSymbols s
     gs = map (\gixes -> map (grid!) gixes) (groupIndices s)
     
 
@@ -119,13 +162,13 @@ solve :: Sudoku -> Sudoku
 solve s | s == s'   = s
         | otherwise = solve s'
   where
-    s'   = solve' ixes s
+    s'   = solveGroups ixes s
     ixes = groupIndices s
     
 -- For each group in s, try to solve it then patch it back into s.
 -- Stop after a single round of this (one try per group).
-solve' [] s = s
-solve' (gix:gixs) s = solve' gixs (s { sudokuGrid = grid' })
+solveGroups [] s = s
+solveGroups (gix:gixs) s = solveGroups gixs (s { sudokuGrid = grid' })
   where
     group = map (grid!) gix
     grid = sudokuGrid s
@@ -143,6 +186,9 @@ reduceGroup g | g == g'   = g
   where
     g' = reduceGroup' g
 
+canReduceGroup g = if g == g' then Nothing else Just g'
+  where g' = reduceGroup g
+  
 -- Performs a single round of reductions
 -- In each round, apply two algorithms.
 reduceGroup' = eliminateCandidates . setUniqueCandidates

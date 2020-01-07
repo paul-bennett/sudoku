@@ -7,7 +7,7 @@ module Main where
 -- unique solutions. 
 --
 -- Run like this:
---   $ cat <<EOT > Sudoku
+--   $ cat <<EOT > sudoku
 --   53_ _7_ ___
 --   6__ 195 ___
 --   _98 ___ _6_
@@ -39,8 +39,10 @@ main = do
   
   let cleanInput = unlines $ filter (not . ("#" `isPrefixOf`)) (lines input)
   let puzzle = fromJust $ mkSudoku cleanInput
-
-  putStrLn $ show puzzle
-  putStrLn ""
+  let solution = solve puzzle
+  
+  putStrLn $ (if isSolved solution then "" else "Partial ") ++ "Solution:"
   putStrLn $ show $ solve puzzle
+  
+  putStrLn $ (if isSolved solution then "" else "\nWorking:\n" ++ showWorkings solution)
   

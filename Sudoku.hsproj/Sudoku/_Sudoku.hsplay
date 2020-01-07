@@ -16,6 +16,9 @@ sampleGrid =
 
 grid = fromJust $ mkSudoku sampleGrid
 
+showWorkings grid
+
+
 groupIndices grid
 
 length $ groupIndices grid
@@ -32,3 +35,12 @@ length (filter ('6' `elem`) g)
 eliminateCandidates g
 setUniqueCandidates g
 reduceGroup g
+
+canReduceGroup ["158", "128", "17", "25", "178"]
+canReduceGroup ["159", "129", "25", "134", "23", "134"]
+canReduceGroup ["128", "158", "159", "128", "129"]
+canReduceGroup ["128", "129", "13578", "59", "1379", "1238", "389"]
+
+canReduceGroup ["59", "45", "49"]
+canReduceGroup ["135", "45", "357", "137", "49", "1379"]
+canReduceGroup ["134", "18", "135", "45", "3589", "89"]
