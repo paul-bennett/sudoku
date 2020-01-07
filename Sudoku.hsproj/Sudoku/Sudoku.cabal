@@ -1,5 +1,5 @@
 cabal-version: 2.4
-name: Sodoku
+name: Sudoku
 version: 1.0
 stability: experimental
 x-ghc-framework-version: 8.6.4-13.14-2
@@ -8,7 +8,7 @@ extra-source-files:
     "unsolved/thenational 2020-01-06 hard.txt"
     multiple-solutions/acb1.txt
 
-executable Sodoku
+executable sudoku
     main-is: Main.hs
     other-modules:
         Sudoku
