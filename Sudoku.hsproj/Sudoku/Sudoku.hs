@@ -159,9 +159,10 @@ groupIndices s = subgrids ++ rows ++ cols
 -- The big bad solver.
 -- Keeps trying solve' until no further changes are made.
 solve :: Sudoku -> Sudoku
-solve s | s == s'   = s
-        | otherwise = solve s'
+solve s | s == s''   = s
+        | otherwise = solve s''
   where
+    s''  = reduceAllIntersections s'
     s'   = solveGroups ixes s
     ixes = groupIndices s
     
@@ -220,7 +221,7 @@ eliminateCandidates g = reverse (elc' [] g)
 --      == ["5", "3", "124", "124"]
 setUniqueCandidates g = suc' symbols g
   where
-    symbols = nub $ foldr (++) "" g
+    symbols = nub $ concat g
     suc' [] g                     = g
     suc' (sym:rest) g | c==1      = suc' rest $ (map f g)
                       | otherwise = suc' rest g
@@ -231,3 +232,80 @@ setUniqueCandidates g = suc' symbols g
         f e = if sym `elem` e
               then [sym]
               else e
+              
+
+-- Given two intersecting groups, if a particular candidate is
+-- present in the intersection but not in the difference of one
+-- group then it shouldn't be in the difference on the other side 
+-- either.
+--
+-- Consider this example:
+--                     ,-------------.
+--                     |             |
+--       .   .   .     |  .   .   .  |     1   .   .
+--                     |             |
+--       .   1   1     |  .   .  >1< |     .   .   .
+--  ,------------------+-------------+------------------.
+--  |    .   .   .     |  1   1   .  |     .   .   .    |
+--  `------------------+-------------+------------------'
+--                     `-------------'
+--
+-- In the central square, "1" is only a candidate where the square
+-- intersects with the bottom row.  Therefore it can't be a candidate
+-- elsewhere in the central square so the candiate marked >1< can be
+-- removed.
+--
+-- Similarly the >2<s marked in this example can be removed:
+--    ,-------------.
+--  ,-+-------------+-----------------------------------.
+--  | |  2   .   2  |     .  >2< >2<       .   .   .    |
+--  `-+-------------+-----------------------------------'
+--    |  .   .   .  |     2   .   .        .   .   2
+--    |             |               
+--    |  .   .   .  |     2   2   2        .   .   2
+--    |             |             
+--    `-------------'
+
+-- This algorithm is useful only for pairs of groups where there are
+-- three cells in the intersection, but is harmless when there is only
+-- a single intersecting cell.  (In that case, intersecting cell becomes
+-- committed and the candidates should be removed from the difference
+-- anyway.)
+--
+-- Ultimately this might allow for the removal of the uniqueCandidates
+-- strategy.
+reduceAllIntersections :: Sudoku -> Sudoku
+reduceAllIntersections s = foldr reduceIntersection s
+    [(g1,g2) | g1 <- groupList, g2 <- groupList, g1 /= g2]
+  where
+    groupList = groupIndices s
+
+-- Applies a reduction of a pair of groups.
+--   reduceIntersection (g1, g2) s = s'
+--
+-- Given a Sudoku s, and two groups of indices g1 and g2, if there are
+-- candidates present in the intersection of g1 and g2 that aren't in
+-- the rest of g1, then remove them from the rest of g2 in the result
+-- Sudoku.
+--
+-- This also copes with non-intersecting groups.
+--
+reduceIntersection :: ([SudokuIx], [SudokuIx]) -> Sudoku -> Sudoku
+reduceIntersection (g1, g2) s = foldl checkCandidate s candidates
+  where
+    ixIntersect = g1 `intersect` g2    
+    ixJustG1 = g1 \\ g2
+    ixJustG2 = g2 \\ g1
+
+    -- all the candidates in the intersection  
+    candidates = nub $ concat $ map (sudokuGrid s!) ixIntersect
+    
+    -- Apply the rule for the present candidate
+    checkCandidate s c | inJustG1   = s
+                       | otherwise  = s { sudokuGrid = newGrid }
+      where
+        inJustG1 = any (elem c) $ map (oldGrid!) ixJustG1
+        
+        oldGrid = sudokuGrid s
+        newGrid = oldGrid // map (\ix -> (ix, oldGrid!ix \\ [c])) ixJustG2
+        
