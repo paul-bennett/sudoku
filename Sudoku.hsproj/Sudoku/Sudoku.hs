@@ -39,7 +39,7 @@ instance Show Sudoku where
   show s = pretty $ gridify $ map showElem $ elems $ sudokuGrid s
     where 
       showElem [e] = e    -- cell with only one possible answer
-      showElem _   = '_'  -- show a placeholder for unresolved cells
+      showElem _   = head placeholders  -- unresolved cells
       
       rank = sudokuRank s
       
@@ -105,22 +105,22 @@ mkSudoku s =
     gridSize = length strippedGrid
     subgridSize = round $ sqrt $ fromIntegral gridSize
     rank = round $ sqrt $ fromIntegral subgridSize
-    specifiedSymbols = nub $ filter (/= placeholder) strippedGrid
+    specifiedSymbols = nub $ filter (`notElem` placeholders) strippedGrid
     ourSymbols = take subgridSize $ nub $ specifiedSymbols ++ allSymbols
     dimensions = ((1,1,1,1),(rank,rank,rank,rank))
     indexes = range dimensions
-    cells = map (\c -> if c == placeholder
+    cells = map (\c -> if c `elem` placeholders
                        then ourSymbols 
                        else [c])
                 strippedGrid
 
--- Used as a placeholder on input
-placeholder = '_'
+-- Used as a placeholders on input; first is used as placeholder on out
+placeholders = "_."
 
 -- All potential symbols if not specified; numbers first, then letters
 -- followed by all other punctuation in 7-bit ASCII.  Remember to remove
 -- the placeholder char
-allSymbols = filter (/= placeholder)
+allSymbols = filter (`notElem` placeholders)
              $ nub
              $ ['1'..'9'] ++ "0" ++ 
                ['a'..'z'] ++ ['A'..'Z'] ++
