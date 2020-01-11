@@ -23,7 +23,6 @@ groupIndices grid
 
 length $ groupIndices grid
 
-reduceGroup' ["123", "1", "234", "2"]
 reduceGroup ["123", "1", "234", "2"]
 
 reduceGroup ["8", "123456789", "123456789", "123456789", "6", "123456789", "123456789", "123456789", "3"]
@@ -32,19 +31,67 @@ reduceGroup ["56", "56", "5678", "8"]
 
 let g = ["12345", "1234", "124", "124"]
 length (filter ('6' `elem`) g)
-eliminateCandidates g
-setUniqueCandidates g
-reduceGroup g
+
+-- This example needs two reductions
+reduceGroup $ reduceGroup g
+
+
+canReduceGroup g = g /= reduceGroup g
+
+reduceGroup ["124", "235", "3145", "45", "45"]
+reduceGroup ["56", "56", "5678", "8"]
+reduceGroup ["12345", "1234", "124", "124", "24"]
+
+canReduceGroup ["123", "123", "345", "345", "345"]
+reduceGroup ["123", "1239", "345", "345", "3459", "9"]
+
+canReduceGroup ["128", "158", "159", "128", "129"]
+canReduceGroup ["138", "139", "19", "13578", "59", "1379"]
+canReduceGroup ["389", "289", "18", "1238", "389"]
+canReduceGroup ["134", "18", "23", "27", "178", "134"]
+canReduceGroup ["135", "45", "357", "137", "49", "1379"]
+canReduceGroup ["3589", "89", "35", "38"]
+
+canReduceGroup ["128", "138", "139", "389", "289"]
+canReduceGroup ["158", "159", "19", "18"]
+canReduceGroup ["128", "129", "13578", "59", "1379", "1238", "389"]
+canReduceGroup ["17", "17", "28", "28"]
+canReduceGroup ["25", "25"]
+canReduceGroup ["134", "18", "135", "45", "3589", "89"]
+canReduceGroup ["23", "27", "357", "35"]
+canReduceGroup ["178", "134", "137", "49", "1379", "38"]
 
 canReduceGroup ["158", "128", "17", "25", "178"]
 canReduceGroup ["159", "129", "25", "134", "23", "134"]
-canReduceGroup ["128", "158", "159", "128", "129"]
-canReduceGroup ["128", "129", "13578", "59", "1379", "1238", "389"]
-
+canReduceGroup ["128", "17", "18", "27"]
+canReduceGroup ["138", "13578", "135", "357", "137"]
 canReduceGroup ["59", "45", "49"]
-canReduceGroup ["135", "45", "357", "137", "49", "1379"]
-canReduceGroup ["134", "18", "135", "45", "3589", "89"]
+canReduceGroup ["139", "19", "1379", "1379"]
+canReduceGroup ["18", "1238", "28", "38"]
+canReduceGroup ["389", "389", "3589", "35"]
+canReduceGroup ["289", "28", "89"]
 
-"1234" `intersect` "3456"
-"1234" \\ "3456"
-"3456" \\ "1234"
+gs = [ ["128", "158", "159", "128", "129"]
+     , ["138", "139", "19", "13578", "59", "1379"]
+     , ["389", "289", "18", "1238", "389"]
+     , ["134", "18", "23", "27", "178", "134"]
+     , ["135", "45", "357", "137", "49", "1379"]
+     , ["3589", "89", "35", "38"]
+     ]
+gs
+
+g = zip [0..] (gs!!0)
+g
+
+filter (`notElem` "123") "345"
+
+seq = "234"
+parts = partition (\c -> length ((snd c) `intersect` seq) > 0) g
+fst parts
+snd parts
+
+sortBy (\(a,_) (b,_) -> compare a b) ((fst parts) ++ (snd parts))
+
+
+reduceGroup ["23", "235", "567", "567", "67"]
+-- should be ["23", "23", "567", "567", "67"] 

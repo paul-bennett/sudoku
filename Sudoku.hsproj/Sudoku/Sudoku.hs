@@ -114,12 +114,12 @@ mkSudoku s =
                        else [c])
                 strippedGrid
 
--- Used as a placeholders on input; first is used as placeholder on out
-placeholders = "_."
+-- Used as placeholders on input; first is used as placeholder on output
+placeholders = ['_', '.']
 
 -- All potential symbols if not specified; numbers first, then letters
 -- followed by all other punctuation in 7-bit ASCII.  Remember to remove
--- the placeholder char
+-- the placeholder chars
 allSymbols = filter (`notElem` placeholders)
              $ nub
              $ ['1'..'9'] ++ "0" ++ 
@@ -155,84 +155,81 @@ groupIndices s = subgrids ++ rows ++ cols
                  | sg <- ixs, cell <- ixs]
     rank = sudokuRank s
     ixs = [1..rank]
+
+type SudokuSolver = Sudoku -> Sudoku
     
 -- The big bad solver.
--- Keeps trying solve' until no further changes are made.
-solve :: Sudoku -> Sudoku
-solve s | s == s''   = s
-        | otherwise = solve s''
-  where
-    s''  = reduceAllIntersections s'
-    s'   = solveGroups ixes s
-    ixes = groupIndices s
-    
+-- Tries all solvers until no further changes are made.
+solve s | s == s'   = s
+        | otherwise = solve s'
+  where s' = foldr ($) s
+              [ solveGroups
+              , reduceAllIntersections
+              ]
+
+solveGroups :: SudokuSolver
+solveGroups s = solveGroups' s (groupIndices s)
+
 -- For each group in s, try to solve it then patch it back into s.
 -- Stop after a single round of this (one try per group).
-solveGroups [] s = s
-solveGroups (gix:gixs) s = solveGroups gixs (s { sudokuGrid = grid' })
+solveGroups' = foldr solveOneGroup
   where
-    group = map (grid!) gix
-    grid = sudokuGrid s
-    group' = reduceGroup group
-    grid' = grid // (zip gix group')    
+    solveOneGroup gix s = s { sudokuGrid = newGrid }
+      where
+        group = map (oldGrid!) gix
+        oldGrid = sudokuGrid s
+        newGrid = oldGrid // (zip gix $ reduceGroup group)
 
--- group is a list of strings. Each string is a list of possible
--- values for that place. Goal is to eliminate duplicates.  Do this
--- by finding singleton strings, then remove that value from all
--- other strings in the group.
 
--- Keep reducing until no changes have been made
-reduceGroup g | g == g'   = g
-              | otherwise = reduceGroup g'
-  where
-    g' = reduceGroup' g
-
-canReduceGroup g = if g == g' then Nothing else Just g'
-  where g' = reduceGroup g
-  
 -- Performs a single round of reductions
--- In each round, apply two algorithms.
-reduceGroup' = eliminateCandidates . setUniqueCandidates
+-- This is a generalisation of the previous two algorithms
+--
+-- reduceGroup considers subsets of the candidates for all cells within
+-- a group, and looks for a situation where the set of cells that contain
+-- those candidates is the same size as the number of candidates in the
+-- subset.  In that case, any other candidates can be eliminated from that
+-- set of cells.
 
+-- In the case where the candidate subset's size is one, this has the same
+-- effect as the previous setUniqueCandidates algorithm.
+--
+--    setUniqueCandidates ["12345", "1234", "124", "124", "24"]
+--      == ["5", "3", "124", "124", "24"]
+
+-- I am not yet 100% convinced that this algorithm is a superset of the
+-- previous eliminateCandidate strategy.
+
+-- eliminateCandidate:
+--
 -- If a group has n cells that share the same candidate list,
 -- and that candidate list has n members, then those candidates
 -- cannot be viable candidates in other cells in the group
+--
 --    eliminateCandidates ["56", "56", "5678", "8"]
 --      == ["56", "56", "7", "8"]
-eliminateCandidates g = reverse (elc' [] g)
+
+reduceGroup :: [[Char]] -> [[Char]]
+reduceGroup g = map snd $ foldr checkSubseq start seqs
   where
-    elc' a [] = a
-    elc' a (h:t) = elc' (h:a') t'
+    start = zip [0..] g
+    -- Split g into two groups: the cells that contain one or more
+    -- members of seq and ones that don't.  If the number of cells
+    -- in the former set equals the length of the sequence, then
+    -- candidates not in the sequence can be filtered out of the
+    -- first group
+
+    seqs = filter (/= []) $ subsequences syms
+    syms = nub $ concat g
+
+    checkSubseq :: [Char] -> [(Int, [Char])] -> [(Int, [Char])]
+    checkSubseq seq g = sortBy (\(a,_) (b,_) -> compare a b) (filtered ++ (snd parts))
       where
-        n = length h
-        c = 1 + length (filter (h==) (a++t))
-        a' = s a
-        t' = s t
-        s = if n /= c
-            then id
-            else map (\x -> if    x == h 
-                            then  x
-                            else  filter (`notElem` h) x
-                          )
-                      
--- If there's a symbol that only appears in one cell's candidate
--- list, then it must be the value of that cell.
---    setUniqueCandidates ["12345", "1234", "124", "124"] 
---      == ["5", "3", "124", "124"]
-setUniqueCandidates g = suc' symbols g
-  where
-    symbols = nub $ concat g
-    suc' [] g                     = g
-    suc' (sym:rest) g | c==1      = suc' rest $ (map f g)
-                      | otherwise = suc' rest g
-      where
-        -- How many members of the group included sym?
-        c = length (filter (sym `elem`) g)
-    
-        f e = if sym `elem` e
-              then [sym]
-              else e
-              
+        -- fst parts == cells that have one or more of this seq
+        -- snd parts == cells with no candidates in seq
+        parts = partition (\cell -> length ((snd cell) `intersect` seq) > 0) g
+        filtered = if length (fst parts) == length seq
+                   then map (\(ix,cs) -> (ix, filter (`elem` seq) cs)) (fst parts)
+                   else fst parts
 
 -- Given two intersecting groups, if a particular candidate is
 -- present in the intersection but not in the difference of one
@@ -274,7 +271,7 @@ setUniqueCandidates g = suc' symbols g
 --
 -- Ultimately this might allow for the removal of the uniqueCandidates
 -- strategy.
-reduceAllIntersections :: Sudoku -> Sudoku
+reduceAllIntersections :: SudokuSolver
 reduceAllIntersections s = foldr reduceIntersection s
     [(g1,g2) | g1 <- groupList, g2 <- groupList, g1 /= g2]
   where
