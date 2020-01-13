@@ -4,8 +4,6 @@ version: 1.0
 stability: experimental
 x-ghc-framework-version: 8.6.4-13.14-2
 x-last-ide-version: HfM1.7.0
-extra-source-files:
-    "unsolved/thenational 2020-01-06 hard.txt"
 
 executable sudoku
     main-is: Main.hs
