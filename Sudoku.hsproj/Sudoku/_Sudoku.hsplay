@@ -95,3 +95,92 @@ sortBy (\(a,_) (b,_) -> compare a b) ((fst parts) ++ (snd parts))
 
 reduceGroup ["23", "235", "567", "567", "67"]
 -- should be ["23", "23", "567", "567", "67"] 
+
+
+removeX s = s { sudokuGrid = newGrid }
+  where
+    oldGrid = sudokuGrid s
+    newGrid = oldGrid // (map (\ix -> (ix, (oldGrid!ix) \\ "x")) $ indices oldGrid)
+    
+s = removeX $ fromJust $ mkSudoku $ concat [ "xx_ _xx x__"
+                      , "_xx xxx _xx"
+                      , "_xx _xx __x"
+                      , "x_x xxx xxx"
+                      , "xxx xxx _x_"
+                      , "xxx xx_ xxx"
+                      , "xx_ xxx x__"
+                      , "xxx x_x xxx"
+                      , "_xx xxx _xx" ]
+                      
+--putStr $ showWorkings s
+--
+gs = groupIndices s
+
+grid = sudokuGrid s
+oldGrid = grid
+
+g11 = gs!!10
+g12 = gs!!17
+g21 = gs!!18
+g22 = gs!!24
+--
+--g11
+--g12 
+--g21
+--g22
+--
+--map (grid!) g11
+--map (grid!) g12
+--map (grid!) g21
+--map (grid!) g22
+--
+--s' = reduceXwingIntersection g11 g12 g21 g22 s
+--s == s'
+--
+--intersectIxes =  intersect <$> [g11, g12] <*> [g21, g22]
+--intersectIxes
+--
+--intersectVals = liftM (nub . concat . (map (oldGrid!))) intersectIxes
+--
+--intersectVals
+--
+--otherRowIxes = (g11 ++ g12) \\ concat intersectIxes
+--otherRowVals = concat $ map (oldGrid!) otherRowIxes
+--
+--otherColIxes = (g21 ++ g22) \\ concat intersectIxes
+--colUpdates = map (\ix -> (ix, filter (/= '1') (oldGrid!ix))) otherColIxes
+--
+--length g11
+--length g12
+--length otherRowIxes
+--length otherColIxes
+--
+--otherRowVals
+--colUpdates
+--
+--
+--
+--candidateSyms = foldr intersect (sudokuSymbols s) intersectVals
+--candidateSyms
+--
+--putStr $ showWorkings s'
+
+
+rank=3
+ixs = [1..rank]
+rows     = [ range ((sg,cell,1,1),(sg,cell,rank,rank)) 
+                 | sg <- ixs, cell <- ixs]
+cols     = [ range ((1,1,sg,cell),(rank,rank,sg,cell)) 
+                 | sg <- ixs, cell <- ixs]
+combsType rt ct = [(r1,r2,c1,c2) | r1 <- rt, r2 <- rt, r1 /= r2
+                                 , c1 <- ct, c2 <- ct, c1 /= c2]
+length rows
+length cols
+combs = combsType rows cols
+length combs
+9*8*9*8
+
+c=(g11,g12,g21,g22)
+length $ filter (\(a,b,c,d) -> a == g11 && b == g12 && c == g21 && d == g22) combs
+g22 == g21
+

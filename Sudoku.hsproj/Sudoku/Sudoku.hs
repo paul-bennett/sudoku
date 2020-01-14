@@ -11,6 +11,7 @@ import Data.Array
 import Data.List
 import Data.List.Split (chunksOf)
 import Data.Char
+import Control.Monad
 
   
 -- Cells are lexographically, top-to-bottom, left-to-right:
@@ -145,6 +146,7 @@ isSolved s = all (\g -> sortedSymbols == (sort . concat) g) gs
 -- The complete top row is (1,1,_,_)
 -- and the complete last column is (_,_,3,3)
 -- while the middle subgrid is (2,_,2,_)
+groupIndices :: Sudoku -> [[SudokuIx]]
 groupIndices s = subgrids ++ rows ++ cols
   where 
     subgrids = [ range ((r,1,c,1),(r,rank,c,rank)) 
@@ -162,10 +164,17 @@ type SudokuSolver = Sudoku -> Sudoku
 -- Tries all solvers until no further changes are made.
 solve s | s == s'   = s
         | otherwise = solve s'
-  where s' = foldr ($) s
+  where s' = foldr (repeatedlySolve) s
               [ solveGroups
               , reduceAllIntersections
+              , solveXwing
               ]
+--        repeatedlySolve solver s = solver s
+        repeatedlySolve solver s | s == s' = s
+                                 | otherwise = repeatedlySolve solver s'
+          where s' = solver s
+-- TODO: make the above more efficient.  For example, test for a solved puzzle before trying
+-- a solver.
 
 solveGroups :: SudokuSolver
 solveGroups s = solveGroups' s (groupIndices s)
@@ -305,4 +314,211 @@ reduceIntersection (g1, g2) s = foldl checkCandidate s candidates
         
         oldGrid = sudokuGrid s
         newGrid = oldGrid // map (\ix -> (ix, oldGrid!ix \\ [c])) ixJustG2
+
+
+-- General Xwing strategy
+--
+-- Consider the intersections of two rows and two columns.
+-- If a particular candidate is present at all intersection
+-- points, but otherwise absent from the two rows in question,
+-- the candidate cannot be present from elsewhere in the two
+-- columns.
+--
+-- Thus in the following example, the >3<s marked can be
+-- eliminated.
+--
+--     ,---.                              ,---.
+--     |   |                              |   |
+--     | . | .   3        3   .   .       | . | 3   3
+--   ,-+---+------------------------------+---+---------.
+--   | | 3 | .   .        .   .   .       | 3 | .   .   |
+--   `-+---+------------------------------+---+---------'
+--     |>3<| .   .        3   .   .       |>3<| 3   .
+--     |   |                              |   |
+--     |   |                              |   |
+--     |   |                              |   |
+--     | . | 3   .        .   .   .       | . | .   .
+--     |   |                              |   |
+--     | . | .   .        .   .   .       |>3<| .   3
+--     |   |                              |   |
+--     | . | .   .        .   .   3       | . | .   .
+--     |   |                              |   |
+--     |   |                              |   |
+--     |   |                              |   |
+--     | . | .   3        .   .   .       | . | 3   3
+--     |   |                              |   |
+--     | . | .   .        .   3   .       | . | .   .
+--   ,-+---+------------------------------+---+---------.
+--   | | 3 | .   .        .   .   .       | 3 | .   .   |
+--   `-+---+------------------------------+---+---------'
+--     `---'                              `---'
+--
+-- Note that although the example above shows intersections
+-- occurring in different subgrids, it is not necessary to test
+-- for this.  For example if all intersections were in the same 
+-- subgrid the puzzle would already be unsolvable because after
+-- committing one intersection the candidate would need to be
+-- removed from all others, by definition leaving the other row
+-- without any cells with that symbol as a candidate.
+--
+--     ,---.   ,---.
+--   ,-+---+---+---+------------------------------------.
+--   | | 4 | . | 4 |      .   .   .         .   .   .   |
+--   `-+---+---+---+------------------------------------'
+--     | . | . | . |      .   .   .         .   .   .
+--   ,-+---+---+---+------------------------------------.
+--   | | 4 | . | 4 |      .   .   .         .   .   .   |
+--   `-+---+---+---+------------------------------------'
+--     `---'   `---'
+--
+-- If the intersections are in different subgrids, but in the
+-- same column of subgrids the puzzle may still be solvable,
+-- but the algorithm described will have no ill effect. 
+--     ,---.   ,---.
+--   ,-+---+---+---+------------------------------------.
+--   | | 5 | . | 5 |      .   .   .         .   .   .   |
+--   `-+---+---+---+------------------------------------'
+--     | . | . | . |      .   .   .         .   .   .
+--     |   |   |   |
+--     | . | . | . |      .   .   .         .   .   .
+--     |   |   |   |
+--     |   |   |   |
+--     |   |   |   |
+--     | . | . | . |      .   .   .         .   .   .
+--   ,-+---+---+---+------------------------------------.
+--   | | 5 | . | 5 |      .   .   .         .   .   .   |
+--   `-+---+---+---+------------------------------------'
+--     | . | . | . |      .   .   .         .   .   .
+--     |   |   |   |
+--     |   |   |   |
+--     |   |   |   |
+--     | . | . |>5<|      .   .   .         .   .   .
+--     |   |   |   |
+--     | . | . | . |      .   .   .         .   .   .
+--     |   |   |   |
+--     | . | . | . |      .   .   .         .   .   .
+--     `---'   `---'
+-- 
+-- Clearly an equivalent strategy applies by swapping the roles
+-- of columns and rows.  The algorithm can be generalised further
+-- by considering intersecting rows/subgrids and columns/subgrids.
+-- The added complication is that in such cases there are three
+-- cells in each intersecting area.
+--
+--     ,-----------.    ,-----------.
+--   ,-+-----------+----+-----------+-------------------.
+--   | | .   6   6 |    | .   .   6 |       .   .   .   |
+--   `-+-----------+----+-----------+-------------------'
+--     | .   .   . |    | .   .   . |       .   .   .
+--   ,-+-----------+----+-----------+-------------------.
+--   | | .   6   . |    | 6   .   . |       .   .   .   |
+--   `-+-----------+----+-----------+-------------------'
+--     `-----------'    `-----------'
+--
+-- The general rule is thus, given a pair of groups of the same
+-- type (rows, columns or subgrids), and another pair of groups
+-- of a different type, then if a particular symbol appears as
+-- a candidate in the four intersection areas, but *nowhere else*
+-- within the first pair of groups, then it can be eliminated
+-- from the non-intersecting cells in the second pair of groups.
+--
+-- Phrased in this way the strategy appears very similar to the
+-- general intersection solved implemented by reduceIntersection.
+
+
+--solveXwing :: SudokuSolver
+--solveXwing s = foldr solveXwingForSym s $ sudokuSymbols s
+--  where
+--    -- try to find an Xwing patter utilising symbol c in s and solve it
+--    solveXwingForSym c s = s
+--
+--groupIndices' s = [subgrids, rows, cols]
+--  where 
+--    subgrids = [ range ((r,1,c,1),(r,rank,c,rank)) 
+--                 | r <- ixs, c <- ixs]
+--    rows     = [ range ((sg,cell,1,1),(sg,cell,rank,rank)) 
+--                 | sg <- ixs, cell <- ixs]
+--    cols     = [ range ((1,1,sg,cell),(rank,rank,sg,cell)) 
+--                 | sg <- ixs, cell <- ixs]
+--    rank = sudokuRank s
+--    ixs = [1..rank]
+
+solveXwing :: SudokuSolver
+solveXwing s = foldr solveXwing' s $ groupIndices s
+  where
+    solveXwing' :: [SudokuIx] -> Sudoku -> Sudoku
+    solveXwing' g s = foldr (\(g1,g2,g3,g4) s -> reduceXwingIntersection g1 g2 g3 g4 s) s combs
+    
+    combs = combsCR
+--    combsFixed = [(gs!!10, gs!!17, gs!!18, gs!!24)]   -- for 2020-01-06
+--    combsNaive = (,,,) <$> gs <*> gs <*> gs <*> gs
+--    combsPerm = map (\[a,b,c,d] -> (a,b,c,d)) $ concat $ map permutations $ filter (\g -> 4 == length g) (subsequences gs)
+    combsType rt ct = [(r1,r2,c1,c2) | r1 <- rt, r2 <- rt, r1 /= r2
+                                     , c1 <- ct, c2 <- ct, c1 /= c2]
+    combsCR = (combsType cols rows) ++ (combsType rows cols)
+                             
+              
+    rank = sudokuRank s             
+    ixs = [1..rank]
+    rows     = [ range ((sg,cell,1,1),(sg,cell,rank,rank)) 
+                 | sg <- ixs, cell <- ixs]
+    cols     = [ range ((1,1,sg,cell),(rank,rank,sg,cell)) 
+                 | sg <- ixs, cell <- ixs]
+
+    gs = groupIndices s
+
+-- Apply the Xwing reduction for the specified four groups.
+-- The groups might not intersect, so 
+reduceXwingIntersection
+  :: [SudokuIx] -> [SudokuIx] -> [SudokuIx] -> [SudokuIx]
+  -> Sudoku -> Sudoku
+reduceXwingIntersection g11 g12 g21 g22 s 
+  | any null intersectIxes  = s
+  | otherwise               = foldr reduceXwing' s candidateSyms
+  where
+    oldGrid = sudokuGrid s
+    intersectIxes = intersect <$> [g11, g12] <*> [g21, g22]
+    intersectVals = liftM (nub . concat . (map (oldGrid!))) intersectIxes
+    candidateSyms = foldr intersect (sudokuSymbols s) intersectVals  -- syms at all intersections
+    
+    -- Is Xwing applicable for the candidate symbol?  If so, go for it.
+    -- We already know that c is present at all intersections, so the
+    -- qualifying test is to ensure it's not present elsewhere in g11 and g12
+    
+    reduceXwing' :: Char -> Sudoku -> Sudoku
+    reduceXwing' c s | c `elem` otherRowVals = s
+                     | otherwise             = s { sudokuGrid = newGrid }
+      where
+        -- 'row' and 'col' here are just convenient names; may be rows, cols
+        -- or subgrids depending on the groups passed into reduceXwingIntersection
+        otherRowIxes = (g11 ++ g12) \\ concat intersectIxes
+        otherRowVals = concat $ map (oldGrid!) otherRowIxes
         
+        otherColIxes = (g21 ++ g22) \\ concat intersectIxes
+        colUpdates = map (\ix -> (ix, filter (/= c) (oldGrid!ix))) otherColIxes
+
+        newGrid = oldGrid // colUpdates
+
+-- TODO: improve efficiency of Xwing reduction
+-- TODO: consider similarities between Xwing intersection and general intersection code
+-- TODO: improve selection of groups for Xwing reduction (specifically subgrids/rows,cols)    
+
+--reduceIntersection :: ([SudokuIx], [SudokuIx]) -> Sudoku -> Sudoku
+--reduceIntersection (g1, g2) s = foldl checkCandidate s candidates
+--  where
+--    ixIntersect = g1 `intersect` g2    
+--    ixJustG1 = g1 \\ g2
+--    ixJustG2 = g2 \\ g1
+--
+--    -- all the candidates in the intersection  
+--    candidates = nub $ concat $ map (sudokuGrid s!) ixIntersect
+--    
+--    -- Apply the rule for the present candidate
+--    checkCandidate s c | inJustG1   = s
+--                       | otherwise  = s { sudokuGrid = newGrid }
+--      where
+--        inJustG1 = any (elem c) $ map (oldGrid!) ixJustG1
+--        
+--        oldGrid = sudokuGrid s
+--        newGrid = oldGrid // map (\ix -> (ix, oldGrid!ix \\ [c])) ixJustG2
+
